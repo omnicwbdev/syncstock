@@ -4,8 +4,8 @@ pkgs.mkShell {
   name = "php-dev-shell";
 
   buildInputs = with pkgs; [
-    # PHP com extensões básicas
-    (php83.withExtensions ({ all, ... }: with all; [
+    # PHP com extensões básicas (usando PHP 8.2)
+    (php82.withExtensions ({ all, ... }: with all; [
       pdo_mysql
       mysqli
       pdo_pgsql
@@ -14,7 +14,7 @@ pkgs.mkShell {
       xdebug
     ]))
     
-    php83Packages.composer
+    php82Packages.composer
     # Adições para PDO Firebird
     firebird  # Biblioteca cliente do Firebird
     autoconf  # Necessário para phpize
@@ -66,10 +66,9 @@ pkgs.mkShell {
     COMPOSER_CACHE_DIR = "$PWD/.cache/composer";
     XDEBUG_MODE = "develop,debug,coverage";
     XDEBUG_CONFIG = "client_host=127.0.0.1 client_port=9003";
-    # Adicionar caminho para Firebird explicitamente
+    # Caminhos para Firebird
     LD_LIBRARY_PATH = "${pkgs.firebird}/lib:${pkgs.lib.makeLibraryPath [pkgs.firebird]}";
     PKG_CONFIG_PATH = "${pkgs.firebird}/lib/pkgconfig:${pkgs.lib.makeSearchPath "lib/pkgconfig" [pkgs.firebird]}";
-    # Caminho para Firebird headers
     CFLAGS = "-I${pkgs.firebird}/include";
     LDFLAGS = "-L${pkgs.firebird}/lib";
   };
@@ -176,7 +175,7 @@ pkgs.mkShell {
       
       # Verificar se pecl está disponível
       if ! command -v pecl &> /dev/null; then
-        echo "❌ PECL not available. Ensure php83Packages.pecl or equivalent is installed."
+        echo "❌ PECL not available. Ensure php82Packages.pecl or equivalent is installed."
         return 1
       fi
 
@@ -189,10 +188,26 @@ pkgs.mkShell {
         echo "💡 Ensure the 'firebird' package is correctly installed or try updating Nixpkgs."
         return 1
       fi
+
+      # Verificar headers do Firebird
+      FIREBIRD_INCLUDE="${pkgs.firebird}/include"
+      if [ -f "$FIREBIRD_INCLUDE/ibase.h" ]; then
+        echo "✅ Found Firebird headers at $FIREBIRD_INCLUDE"
+      else
+        echo "❌ Firebird headers (ibase.h) not found at $FIREBIRD_INCLUDE"
+        return 1
+      fi
       
-      # Tentar instalar a extensão com caminhos explícitos
-      echo "🔨 Building pdo_firebird extension..."
-      CFLAGS="-I${pkgs.firebird}/include" LDFLAGS="-L${pkgs.firebird}/lib" pecl install pdo_firebird || {
+      # Atualizar canal PECL
+      echo "🔄 Updating PECL channel..."
+      pecl channel-update pecl.php.net || {
+        echo "❌ Failed to update PECL channel"
+        return 1
+      }
+      
+      # Tentar instalar uma versão específica do pdo_firebird
+      echo "🔨 Building pdo_firebird-0.9.1 extension..."
+      CFLAGS="-I${pkgs.firebird}/include" LDFLAGS="-L${pkgs.firebird}/lib" pecl install pdo_firebird-0.9.1 || {
         echo "❌ Failed to install PDO Firebird extension via PECL"
         echo "💡 Check if Firebird client libraries and headers are correctly installed."
         return 1
@@ -264,12 +279,12 @@ pkgs.mkShell {
       
       if [ -n "$branch" ]; then
         if [ "$SSH_OK" = true ]; then
-          PS1="\[\e[32m\][php83-dev]\[\e[0m\]:~/$current_dir \[\e[34m\]$branch\[\e[0m\] $status\$ "
+          PS1="\[\e[32m\][php82-dev]\[\e[0m\]:~/$current_dir \[\e[34m\]$branch\[\e[0m\] $status\$ "
         else
-          PS1="\[\e[32m\][php83-dev]\[\e[0m\]:~/$current_dir \[\e[31m\]NO SSH KEY!\[\e[0m\]\$ "
+          PS1="\[\e[32m\][php82-dev]\[\e[0m\]:~/$current_dir \[\e[31m\]NO SSH KEY!\[\e[0m\]\$ "
         fi
       else
-        PS1="\[\e[32m\][php83-dev]\[\e[0m\]:~/$current_dir \$ "
+        PS1="\[\e[32m\][php82-dev]\[\e[0m\]:~/$current_dir \$ "
       fi
     }
 
@@ -289,7 +304,7 @@ pkgs.mkShell {
     php -m | grep -E 'pdo|mysql|sqlite|firebird' | sort
 
     echo
-    echo "🚀 PHP 8.3 Development Environment Ready!"
+    echo "🚀 PHP 8.2 Development Environment Ready!"
     echo "   - PHP: $(php -v 2>/dev/null | head -1)"
     echo "   - Composer: $(composer --version 2>/dev/null | head -1)"
     echo
