@@ -10,30 +10,69 @@ $dotenv->load();
 
 // Configurações de conexão a partir do .env
 $firebird_config = [
+    'host'     => getenv('FIREBIRD_HOST'),
     'dbname'   => getenv('FIREBIRD_DBNAME'),
     'username' => getenv('FIREBIRD_USERNAME'),
     'password' => getenv('FIREBIRD_PASSWORD'),
-    'charset'  => getenv('FIREBIRD_CHARSET')
+    'charset'  => 'UTF8' // Definindo charset padrão para Firebird
 ];
 
 $mysql_config = [
     'host'     => getenv('MYSQL_HOST'),
-    'dbname'   => getenv('MYSQL_DBNAME'),
+    'port'     => getenv('MYSQL_PORT'),
+    'dbname'   => getenv('MYSQL_DATABASE'),
     'username' => getenv('MYSQL_USERNAME'),
     'password' => getenv('MYSQL_PASSWORD'),
-    'charset'  => getenv('MYSQL_CHARSET')
+    'charset'  => 'utf8mb4'
 ];
+
+// Configurações de preços
+$pricing_config = [
+    'lucro'   => floatval(getenv('LUCRO')),
+    'parc3x'  => floatval(getenv('PARC3X')),
+    'parc6x'  => floatval(getenv('PARC6X')),
+    'parc10x' => floatval(getenv('PARC10X'))
+];
+
+// Configuração de debug
+$debug_mode = getenv('DEBUG_MODE') === 'true';
 
 // Função para logar mensagens
 function logMessage($message, $logFile = 'sincronizacao.log')
 {
-    file_put_contents($logFile, date('Y-m-d H:i:s') . " - $message\n", FILE_APPEND);
+    global $debug_mode;
+    
+    if ($debug_mode || strpos($message, 'ERRO') !== false || strpos($message, 'INICIANDO') !== false || strpos($message, 'FINALIZADA') !== false) {
+        file_put_contents($logFile, date('Y-m-d H:i:s') . " - $message\n", FILE_APPEND);
+    }
+}
+
+// Função para calcular preços
+function calcularPrecos($prc_custo, $prc_dolar, $pricing_config)
+{
+    $prc_custo = floatval($prc_custo);
+    $prc_dolar = floatval($prc_dolar);
+    
+    // Calcular preço de venda base (custo + lucro %)
+    $prc_venda = $prc_custo * (1 + ($pricing_config['lucro'] / 100));
+    
+    // Calcular preços parcelados
+    $prc_3x = $prc_venda * (1 + ($pricing_config['parc3x'] / 100));
+    $prc_6x = $prc_venda * (1 + ($pricing_config['parc6x'] / 100));
+    $prc_10x = $prc_venda * (1 + ($pricing_config['parc10x'] / 100));
+    
+    return [
+        'prc_venda' => round($prc_venda, 2),
+        'prc_3x'    => round($prc_3x, 2),
+        'prc_6x'    => round($prc_6x, 2),
+        'prc_10x'   => round($prc_10x, 2)
+    ];
 }
 
 // Função para conectar Firebird
 function conectarFirebird($config)
 {
-    $dsn = "firebird:dbname={$config['dbname']};charset={$config['charset']}";
+    $dsn = "firebird:dbname={$config['host']}:{$config['dbname']};charset={$config['charset']}";
     try {
         $pdo = new PDO($dsn, $config['username'], $config['password'], [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -41,15 +80,15 @@ function conectarFirebird($config)
         ]);
         return $pdo;
     } catch (PDOException $e) {
-        logMessage("Erro ao conectar no Firebird: " . $e->getMessage());
-        die("Erro ao conectar no Firebird: " . $e->getMessage());
+        logMessage("ERRO: Falha ao conectar no Firebird: " . $e->getMessage());
+        die("ERRO: Falha ao conectar no Firebird: " . $e->getMessage());
     }
 }
 
 // Função para conectar MySQL
 function conectarMySQL($config)
 {
-    $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
+    $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['dbname']};charset={$config['charset']}";
     try {
         $pdo = new PDO($dsn, $config['username'], $config['password'], [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -58,13 +97,13 @@ function conectarMySQL($config)
         ]);
         return $pdo;
     } catch (PDOException $e) {
-        logMessage("Erro ao conectar no MySQL: " . $e->getMessage());
-        die("Erro ao conectar no MySQL: " . $e->getMessage());
+        logMessage("ERRO: Falha ao conectar no MySQL: " . $e->getMessage());
+        die("ERRO: Falha ao conectar no MySQL: " . $e->getMessage());
     }
 }
 
 // Função principal de sincronização
-function sincronizarEstoque($pdo_firebird, $pdo_mysql)
+function sincronizarEstoque($pdo_firebird, $pdo_mysql, $pricing_config)
 {
     $start_time = microtime(true);
 
@@ -114,6 +153,9 @@ function sincronizarEstoque($pdo_firebird, $pdo_mysql)
             $params = [];
 
             foreach ($batch as $index => $linha) {
+                // Calcular preços automaticamente
+                $precos = calcularPrecos($linha['PRC_CUSTO'] ?? 0, $linha['PRC_DOLAR'] ?? 0, $pricing_config);
+                
                 $values[] = "(?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $params = array_merge($params, [
                     $linha['ID_ESTOQUE'],
@@ -121,10 +163,10 @@ function sincronizarEstoque($pdo_firebird, $pdo_mysql)
                     $linha['QTD_ATUAL'] ?? 0,
                     $linha['PRC_CUSTO'] ?? 0,
                     $linha['PRC_DOLAR'] ?? 0,
-                    0.00, // PRC_VENDA
-                    0.00, // PRC_3X
-                    0.00, // PRC_6X
-                    0.00  // PRC_10X
+                    $precos['prc_venda'],
+                    $precos['prc_3x'],
+                    $precos['prc_6x'],
+                    $precos['prc_10x']
                 ]);
             }
 
@@ -146,6 +188,8 @@ function sincronizarEstoque($pdo_firebird, $pdo_mysql)
             $rowCount = $stmt_mysql->rowCount();
             $inseridos += ($rowCount == count($batch)) ? count($batch) : 0;
             $atualizados += ($rowCount == 2 * count($batch)) ? count($batch) : ($rowCount - $inseridos);
+            
+            logMessage("Processado lote: " . ($i + count($batch)) . "/$total_lidos");
         }
 
         $pdo_mysql->commit();
@@ -179,8 +223,8 @@ function sincronizarEstoque($pdo_firebird, $pdo_mysql)
 
     } catch (Exception $e) {
         $pdo_mysql->rollBack();
-        logMessage("Erro na sincronização ou execução de stored procedures: " . $e->getMessage());
-        die("Erro na sincronização ou execução de stored procedures: " . $e->getMessage());
+        logMessage("ERRO: Falha na sincronização ou execução de stored procedures: " . $e->getMessage());
+        die("ERRO: Falha na sincronização ou execução de stored procedures: " . $e->getMessage());
     }
 }
 
@@ -195,13 +239,14 @@ try {
     $pdo_mysql = conectarMySQL($mysql_config);
 
     logMessage("Conexões estabelecidas com sucesso!");
+    logMessage("Configuração de preços: LUCRO={$pricing_config['lucro']}%, 3X={$pricing_config['parc3x']}%, 6X={$pricing_config['parc6x']}%, 10X={$pricing_config['parc10x']}%");
 
     // Executar sincronização
-    $estatisticas = sincronizarEstoque($pdo_firebird, $pdo_mysql);
+    $estatisticas = sincronizarEstoque($pdo_firebird, $pdo_mysql, $pricing_config);
 
 } catch (Exception $e) {
-    logMessage("Erro geral: " . $e->getMessage());
-    echo "Erro geral: " . $e->getMessage() . "\n";
+    logMessage("ERRO GERAL: " . $e->getMessage());
+    echo "ERRO GERAL: " . $e->getMessage() . "\n";
 }
 
 $end_total = microtime(true);
@@ -210,7 +255,7 @@ $tempo_total = round($end_total - $start_total, 2);
 // Exibir estatísticas finais
 logMessage("=== SINCRONIZAÇÃO FINALIZADA ===");
 logMessage("Tempo total de execução: $tempo_total segundos");
-logMessage("Estatísticas: " . json_encode($estatisticas));
+logMessage("Estatísticas: " . json_encode($estatisticas ?? []));
 
 // Fechar conexões
 $pdo_firebird = null;
