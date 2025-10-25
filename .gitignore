@@ -1,5 +1,5 @@
 # Arquivo de configurações sensíveis
-.env
+# .env
 
 # Arquivo de log gerado pelo script
 sincronizacao.log
