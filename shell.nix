@@ -1,24 +1,21 @@
 { pkgs ? import <nixpkgs> {} }:
 
-let
-  phpWithExtensions = pkgs.php83.withExtensions ({ enabled, all }: enabled ++ [
-    all.pdo_mysql
-    all.mysqli
-    all.pdo_pgsql
-    all.redis
-    all.sqlite3
-    all.xdebug  # Adicionado para debugging em PHP puro
-  ]);
-in
-
 pkgs.mkShell {
   name = "php-dev-shell";
 
   buildInputs = with pkgs; [
-    phpWithExtensions
+    # PHP com extensões básicas
+    (php83.withExtensions ({ all, ... }: with all; [
+      pdo_mysql
+      mysqli
+      pdo_pgsql
+      redis
+      sqlite3
+      xdebug
+    ]))
+    
     php83Packages.composer
-    redis
-    sqlite
+    firebird  # Cliente Firebird para conexões
     git
     gh
     openssh
@@ -37,23 +34,19 @@ pkgs.mkShell {
     ripgrep
     tmux
     htop
-    html-tidy  # Adicionado para validar/lintar HTML
-    entr  # Adicionado para watch de arquivos (ex.: rebuild automático)
-# Monitoramento e debugging
-    lnav  # Log file navigator
-    httpie  # CLI HTTP client
-    jless  # JSON viewer
-    yq  # YAML processor (como jq para YAML)
-# Segurança
-    sops  # Secrets management
-    gnupg  # Para encriptação
-# Utilitários do sistema
-    inotify-tools  # Melhor watch de arquivos
-    pv  # Progress bar para pipes
-    moreutils  # Utilitários Unix adicionais
-    ranger  # File manager no terminal
-    tree  # Exibir árvore de diretórios
-
+    html-tidy
+    entr
+    lnav
+    httpie
+    jless
+    yq
+    sops
+    gnupg
+    inotify-tools
+    pv
+    moreutils
+    ranger
+    tree
   ];
 
   env = {
@@ -120,7 +113,7 @@ pkgs.mkShell {
       SSH_OK=true
     fi
 
-    # Advanced Git configuration (stored in default $HOME/.gitconfig)
+    # Advanced Git configuration
     echo "⚙️ Setting up advanced Git configuration..."
     git config --global alias.st status
     git config --global alias.br branch
@@ -150,7 +143,7 @@ pkgs.mkShell {
     alias pint="./vendor/bin/pint"
     alias phpstan="./vendor/bin/phpstan"
     alias psalm="./vendor/bin/psalm"
-    alias html-lint="tidy -errors -quiet"  # Alias simples para lintar HTML
+    alias html-lint="tidy -errors -quiet"
 
     alias nv="nvim"
     alias lz="lazygit"
@@ -165,9 +158,24 @@ pkgs.mkShell {
       composer update --with-dependencies --optimize-autoloader
     }
 
-    # Exemplo de watch com entr para rebuild PHP/HTML/CSS
-    watch-rebuild() {
-      ls src/*.php src/*.html src/*.css | entr -r php-server
+    # Solução alternativa para Firebird
+    install-firebird-extension() {
+      echo "📦 Installing Firebird PDO extension via PECL..."
+      
+      # Verificar se pecl está disponível
+      if ! command -v pecl &> /dev/null; then
+        echo "❌ PECL not available. Cannot install Firebird extension."
+        return 1
+      fi
+      
+      # Tentar instalar a extensão
+      pecl install pdo_firebird || {
+        echo "❌ Failed to install PDO Firebird extension via PECL"
+        echo "💡 Alternative: Use a Docker container with PHP and Firebird extension pre-installed"
+        return 1
+      }
+      
+      echo "✅ PDO Firebird extension installed successfully"
     }
 
     # Configure Composer for optimal performance
@@ -229,29 +237,32 @@ pkgs.mkShell {
       echo "✅ Redis started"
     fi
 
+    # Verificar extensões PHP instaladas
+    echo "🔍 Checking PHP extensions..."
+    php -m | grep -E "(pdo|mysql|sqlite)" | sort
+
     echo
-    echo "🚀 PHP 8.3 Development Environment Ready! (Otimizado para PHP puro com HTML)"
-    echo "   - PHP: $(php -v 2>/dev/null | head -1) (com Xdebug para debugging)"
+    echo "🚀 PHP 8.3 Development Environment Ready!"
+    echo "   - PHP: $(php -v 2>/dev/null | head -1)"
     echo "   - Composer: $(composer --version 2>/dev/null | head -1)"
-    echo "   - Databases: Redis, SQLite (com conectividade MySQL/PostgreSQL)"
     echo
-    echo "🛠️ Tools Available:"
-    echo "   - Dependency Management: Composer (cache em $PWD/.cache/composer)"
-    echo "   - HTML: tidy para validação/lint"
-    echo "   - Watchers: entr para automação de rebuilds"
+    echo "⚠️  Firebird PDO Extension Note:"
+    echo "   The PDO Firebird extension is not available in Nixpkgs by default."
+    echo "   You have two options:"
+    echo
+    echo "   1. Use Docker approach (recommended):"
+    echo "      Create a Docker container with PHP and Firebird extension"
+    echo
+    echo "   2. Try to install manually in this shell:"
+    echo "      install-firebird-extension"
+    echo
+    echo "   3. Use a different PHP installation outside Nix"
     echo
     echo "📝 Useful commands:"
-    echo "   - php-server      - Start PHP development server (de src/)"
-    echo "   - composer-update-all - Update Composer dependencies (otimizado)"
-    echo "   - html-lint file.html - Lintar arquivo HTML"
-    echo
-    echo "ℹ️ Dicas para setup:"
-    echo "   - Para jQuery: Use CDN nos seus HTML/PHP."
-    echo "   - Instale ferramentas PHP extras via Composer:"
-    echo "     composer require phpunit/phpunit --dev"
-    echo "     composer require phpstan/phpstan --dev"
-    echo "     composer require vimeo/psalm --dev"
-    echo "     composer require friendsofphp/php-cs-fixer --dev"
+    echo "   - php-server      - Start PHP development server"
+    echo "   - composer-update-all - Update Composer dependencies"
+    echo "   - install-firebird-extension - Attempt to install Firebird extension"
     echo
   '';
 }
+
