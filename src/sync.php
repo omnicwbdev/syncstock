@@ -1,6 +1,6 @@
 <?php
 
-require 'vendor/autoload.php'; // Carrega o Composer autoloader para phpdotenv
+require_once __DIR__ . '/../vendor/autoload.php';
 
 use Dotenv\Dotenv;
 
@@ -41,7 +41,7 @@ $debug_mode = getenv('DEBUG_MODE') === 'true';
 function logMessage($message, $logFile = 'sincronizacao.log')
 {
     global $debug_mode;
-    
+
     if ($debug_mode || strpos($message, 'ERRO') !== false || strpos($message, 'INICIANDO') !== false || strpos($message, 'FINALIZADA') !== false) {
         file_put_contents($logFile, date('Y-m-d H:i:s') . " - $message\n", FILE_APPEND);
     }
@@ -52,15 +52,15 @@ function calcularPrecos($prc_custo, $prc_dolar, $pricing_config)
 {
     $prc_custo = floatval($prc_custo);
     $prc_dolar = floatval($prc_dolar);
-    
+
     // Calcular preço de venda base (custo + lucro %)
     $prc_venda = $prc_custo * (1 + ($pricing_config['lucro'] / 100));
-    
+
     // Calcular preços parcelados
     $prc_3x = $prc_venda * (1 + ($pricing_config['parc3x'] / 100));
     $prc_6x = $prc_venda * (1 + ($pricing_config['parc6x'] / 100));
     $prc_10x = $prc_venda * (1 + ($pricing_config['parc10x'] / 100));
-    
+
     return [
         'prc_venda' => round($prc_venda, 2),
         'prc_3x'    => round($prc_3x, 2),
@@ -155,7 +155,7 @@ function sincronizarEstoque($pdo_firebird, $pdo_mysql, $pricing_config)
             foreach ($batch as $index => $linha) {
                 // Calcular preços automaticamente
                 $precos = calcularPrecos($linha['PRC_CUSTO'] ?? 0, $linha['PRC_DOLAR'] ?? 0, $pricing_config);
-                
+
                 $values[] = "(?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $params = array_merge($params, [
                     $linha['ID_ESTOQUE'],
@@ -188,7 +188,7 @@ function sincronizarEstoque($pdo_firebird, $pdo_mysql, $pricing_config)
             $rowCount = $stmt_mysql->rowCount();
             $inseridos += ($rowCount == count($batch)) ? count($batch) : 0;
             $atualizados += ($rowCount == 2 * count($batch)) ? count($batch) : ($rowCount - $inseridos);
-            
+
             logMessage("Processado lote: " . ($i + count($batch)) . "/$total_lidos");
         }
 
