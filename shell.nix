@@ -4,18 +4,46 @@ pkgs.mkShell {
   name = "php-dev-shell";
 
   buildInputs = with pkgs; [
-    # PHP com extensões básicas
+    # PHP com extensões essenciais
     (php83.withExtensions ({ all, ... }: with all; [
+      iconv
+      mbstring
+      filter
+      session
+      tokenizer
+      pdo
+      # pdo_firebird
+      interbase
       pdo_mysql
       mysqli
       pdo_pgsql
       redis
       sqlite3
       xdebug
+      xml
+      dom
+      simplexml
+      xmlreader
+      xmlwriter
+      ctype
+      curl
+      fileinfo
+      ftp
+      gd
+      intl
+      ldap
+      opcache
+      openssl
+      pcntl
+      posix
+      readline
+      sockets
+      zip
+      zlib
     ]))
     
     php83Packages.composer
-    firebird  # Cliente Firebird para conexões
+    firebird
     git
     gh
     openssh
@@ -158,24 +186,15 @@ pkgs.mkShell {
       composer update --with-dependencies --optimize-autoloader
     }
 
-    # Solução alternativa para Firebird
-    install-firebird-extension() {
-      echo "📦 Installing Firebird PDO extension via PECL..."
-      
-      # Verificar se pecl está disponível
-      if ! command -v pecl &> /dev/null; then
-        echo "❌ PECL not available. Cannot install Firebird extension."
+    # Verificar e instalar dependências do composer
+    composer-install-deps() {
+      if [ ! -f "composer.json" ]; then
+        echo "❌ composer.json not found in current directory"
         return 1
       fi
       
-      # Tentar instalar a extensão
-      pecl install pdo_firebird || {
-        echo "❌ Failed to install PDO Firebird extension via PECL"
-        echo "💡 Alternative: Use a Docker container with PHP and Firebird extension pre-installed"
-        return 1
-      }
-      
-      echo "✅ PDO Firebird extension installed successfully"
+      echo "📦 Installing Composer dependencies..."
+      composer install --optimize-autoloader
     }
 
     # Configure Composer for optimal performance
@@ -239,30 +258,18 @@ pkgs.mkShell {
 
     # Verificar extensões PHP instaladas
     echo "🔍 Checking PHP extensions..."
-    php -m | grep -E "(pdo|mysql|sqlite)" | sort
+    php -m | grep -E "(iconv|mbstring|pdo|mysql|sqlite|xml|json)" | sort
 
     echo
     echo "🚀 PHP 8.3 Development Environment Ready!"
     echo "   - PHP: $(php -v 2>/dev/null | head -1)"
     echo "   - Composer: $(composer --version 2>/dev/null | head -1)"
-    echo
-    echo "⚠️  Firebird PDO Extension Note:"
-    echo "   The PDO Firebird extension is not available in Nixpkgs by default."
-    echo "   You have two options:"
-    echo
-    echo "   1. Use Docker approach (recommended):"
-    echo "      Create a Docker container with PHP and Firebird extension"
-    echo
-    echo "   2. Try to install manually in this shell:"
-    echo "      install-firebird-extension"
-    echo
-    echo "   3. Use a different PHP installation outside Nix"
+    echo "   - Extensions: iconv, mbstring, PDO, and many more included"
     echo
     echo "📝 Useful commands:"
-    echo "   - php-server      - Start PHP development server"
+    echo "   - php-server          - Start PHP development server"
     echo "   - composer-update-all - Update Composer dependencies"
-    echo "   - install-firebird-extension - Attempt to install Firebird extension"
+    echo "   - composer-install-deps - Install project dependencies"
     echo
   '';
 }
-
