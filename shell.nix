@@ -15,6 +15,13 @@ pkgs.mkShell {
     ]))
     
     php83Packages.composer
+    # Adições para PDO Firebird
+    firebird  # Biblioteca cliente do Firebird
+    autoconf  # Necessário para phpize
+    automake  # Ferramentas de build
+    libtool   # Ferramentas de build
+    gcc       # Compilador
+    pkg-config  # Para localizar bibliotecas
     git
     gh
     openssh
@@ -59,6 +66,12 @@ pkgs.mkShell {
     COMPOSER_CACHE_DIR = "$PWD/.cache/composer";
     XDEBUG_MODE = "develop,debug,coverage";
     XDEBUG_CONFIG = "client_host=127.0.0.1 client_port=9003";
+    # Adicionar caminho para Firebird explicitamente
+    LD_LIBRARY_PATH = "${pkgs.firebird}/lib:${pkgs.lib.makeLibraryPath [pkgs.firebird]}";
+    PKG_CONFIG_PATH = "${pkgs.firebird}/lib/pkgconfig:${pkgs.lib.makeSearchPath "lib/pkgconfig" [pkgs.firebird]}";
+    # Caminho para Firebird headers
+    CFLAGS = "-I${pkgs.firebird}/include";
+    LDFLAGS = "-L${pkgs.firebird}/lib";
   };
 
   shellHook = ''
@@ -157,25 +170,60 @@ pkgs.mkShell {
       composer update --with-dependencies --optimize-autoloader
     }
 
-    # Solução alternativa para Firebird
+    # Função para instalar PDO Firebird
     install-firebird-extension() {
       echo "📦 Installing Firebird PDO extension via PECL..."
       
       # Verificar se pecl está disponível
       if ! command -v pecl &> /dev/null; then
-        echo "❌ PECL not available. Cannot install Firebird extension."
+        echo "❌ PECL not available. Ensure php83Packages.pecl or equivalent is installed."
+        return 1
+      fi
+
+      # Verificar se as bibliotecas do Firebird estão disponíveis
+      FIREBIRD_LIB="${pkgs.firebird}/lib/libfbclient.so"
+      if [ -f "$FIREBIRD_LIB" ]; then
+        echo "✅ Found libfbclient.so at $FIREBIRD_LIB"
+      else
+        echo "❌ Firebird client library (libfbclient.so) not found at $FIREBIRD_LIB"
+        echo "💡 Ensure the 'firebird' package is correctly installed or try updating Nixpkgs."
         return 1
       fi
       
-      # Tentar instalar a extensão
-      pecl install pdo_firebird || {
+      # Tentar instalar a extensão com caminhos explícitos
+      echo "🔨 Building pdo_firebird extension..."
+      CFLAGS="-I${pkgs.firebird}/include" LDFLAGS="-L${pkgs.firebird}/lib" pecl install pdo_firebird || {
         echo "❌ Failed to install PDO Firebird extension via PECL"
-        echo "💡 Alternative: Use a Docker container with PHP and Firebird extension pre-installed"
+        echo "💡 Check if Firebird client libraries and headers are correctly installed."
         return 1
       }
       
-      echo "✅ PDO Firebird extension installed successfully"
+      # Habilitar a extensão no PHP
+      PHP_EXT_DIR=$(php -i | grep '^extension_dir' | awk '{print $3}')
+      if [ -f "$PHP_EXT_DIR/pdo_firebird.so" ]; then
+        echo "extension=pdo_firebird.so" > $(php --ini | grep "Loaded Configuration File" | awk '{print $NF}' | sed 's/php.ini$/conf.d/pdo_firebird.ini/')
+        echo "✅ PDO Firebird extension installed and enabled successfully"
+      else
+        echo "❌ pdo_firebird.so not found in $PHP_EXT_DIR"
+        return 1
+      fi
+      
+      # Verificar se a extensão está carregada
+      if php -m | grep -q pdo_firebird; then
+        echo "✅ PDO Firebird extension is loaded"
+      else
+        echo "⚠️ PDO Firebird extension installed but not loaded. Check PHP configuration."
+        return 1
+      fi
     }
+
+    # Tentar instalar pdo_firebird automaticamente
+    if ! php -m | grep -q pdo_firebird; then
+      echo "⚠️ PDO Firebird extension not found. Attempting to install..."
+      install-firebird-extension
+    else
+      echo "✅ PDO Firebird extension already loaded"
+    fi
 
     # Configure Composer for optimal performance
     echo "⚡ Configuring Composer for optimal performance..."
@@ -238,7 +286,7 @@ pkgs.mkShell {
 
     # Verificar extensões PHP instaladas
     echo "🔍 Checking PHP extensions..."
-    php -m | grep -E 'pdo|mysql|sqlite' | sort
+    php -m | grep -E 'pdo|mysql|sqlite|firebird' | sort
 
     echo
     echo "🚀 PHP 8.3 Development Environment Ready!"
@@ -246,16 +294,9 @@ pkgs.mkShell {
     echo "   - Composer: $(composer --version 2>/dev/null | head -1)"
     echo
     echo "⚠️  Firebird PDO Extension Note:"
-    echo "   The PDO Firebird extension is not available in Nixpkgs by default."
-    echo "   You have two options:"
-    echo
-    echo "   1. Use Docker approach (recommended):"
-    echo "      Create a Docker container with PHP and Firebird extension"
-    echo
-    echo "   2. Try to install manually in this shell:"
-    echo "      install-firebird-extension"
-    echo
-    echo "   3. Use a different PHP installation outside Nix"
+    echo "   The PDO Firebird extension is installed via PECL in this shell."
+    echo "   If you encounter issues, ensure Firebird client libraries are available."
+    echo "   You can retry installation with: install-firebird-extension"
     echo
     echo "📝 Useful commands:"
     echo "   - php-server      - Start PHP development server"
