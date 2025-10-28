@@ -1,5 +1,5 @@
 services:
-  php-cli:
+  syncstock:
     build:
       context: .
       dockerfile: Dockerfile.php8.4
