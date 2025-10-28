@@ -6,6 +6,8 @@ services:
     container_name: sync
     volumes:
       - ./:/app
+    env_file:
+      - .env  # Carrega variáveis do .env
     environment:
       - TZ=America/Sao_Paulo
       - DEBUG_MODE=true
