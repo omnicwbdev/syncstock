@@ -1,7 +1,7 @@
 # Makefile para SyncStock (PHP 8.4 + Firebird + MySQL)
 # Comandos para build, execução, debug e controle do container
 
-.PHONY: build build-fast up start run exec logs stop restart clean help version tag
+.PHONY: build build-fast up start run exec logs stop restart clean help version tag dangling
 
 # =============================================================================
 # CONFIGURAÇÕES
@@ -61,6 +61,7 @@ help: ## Mostra esta ajuda (padrão)
 	@echo "  make stop         → Para o container removendo orphans"
 	@echo "  make restart      → Para + Build + Sobe + Executa"
 	@echo "  make clean        → Remove container, volumes e limpa cache"
+	@echo "  make dangling     → Remove imagens dangling (sem tag)"
 	@echo "  make help         → Mostra esta ajuda"
 	@echo ""
 	@echo "CONTROLE DE VERSÃO:"
@@ -131,8 +132,17 @@ clean: ## Remove container, volumes e limpa imagens
 	@docker compose down -v --remove-orphans
 	@docker system prune -f
 
+dangling: ## Remove imagens dangling (sem tag) - <none>:<none>
+	@echo "Removendo imagens dangling..."
+	@DANGLING_IMAGES=$$(docker images -f "dangling=true" -q); \
+	if [ -n "$$DANGLING_IMAGES" ]; then \
+		echo "Removendo imagens: $$DANGLING_IMAGES"; \
+		docker rmi $$DANGLING_IMAGES 2>/dev/null || echo "Algumas imagens não puderam ser removidas (em uso)"; \
+	else \
+		echo "Nenhuma imagem dangling encontrada."; \
+	fi
+
 # =============================================================================
 # DICA: Use 'make' sem argumentos para ver a ajuda
 # =============================================================================
 .DEFAULT_GOAL := help
-
