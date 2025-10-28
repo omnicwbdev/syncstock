@@ -4,3 +4,6 @@
 2025-10-28 03:18:37 - === INICIANDO SINCRONIZAÇÃO FIREBIRD -> MySQL ===
 2025-10-28 03:18:37 - Conectando aos bancos de dados...
 2025-10-28 03:18:37 - ERRO: Falha ao conectar no Firebird: SQLSTATE[HY000] [335544721] Unable to complete network request to host "localhost".
+2025-10-28 03:23:25 - === INICIANDO SINCRONIZAÇÃO FIREBIRD -> MySQL ===
+2025-10-28 03:23:25 - Conectando aos bancos de dados...
+2025-10-28 03:23:25 - ERRO: Falha ao conectar no Firebird: SQLSTATE[HY000] [335544721] Unable to complete network request to host "localhost".
