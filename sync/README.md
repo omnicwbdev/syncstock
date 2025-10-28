@@ -6,15 +6,15 @@ docker-compose build --no-cache
 docker-compose up -d
 
 # 3. Verifica extensão pdo_firebird
-docker exec -it sync-dev php -m | grep firebird
+docker exec -it sync php -m | grep firebird
 # Saída esperada: pdo_firebird
 
 # 4. Verifica versão PHP
-docker exec -it sync-dev php -v
+docker exec -it sync php -v
 # Saída esperada: PHP 8.2.x (cli)
 
 # 5. Teste rápido de conexão Firebird (ajuste host/db)
-docker exec -it sync-dev php -r "
+docker exec -it sync php -r "
 try {
     \$pdo = new PDO('firebird:dbname=127.0.0.1:/path/EMPRESA.FDB;charset=UTF8', 'SYSDBA', 'masterkey');
     echo 'PDO_FIREBIRD OK no PHP 8.2!' . PHP_EOL;
@@ -26,8 +26,20 @@ try {
 "
 
 # 6. Executa o sync
-docker exec -it sync-dev php sync/sync.php
+docker exec -it sync php sync/sync.php
 
 # 7. Ver log
-docker exec -it sync-dev tail -f sincronizacao.log
+docker exec -it sync tail -f sincronizacao.log
 
+# 8. Debug composer
+docker exec -it sync composer install -vvv
+
+# Extras
+docker exec -it sync composer dump-autoload
+docker exec -it sync php src/sync.php
+
+# Verificar se as dependências foram instaladas
+docker exec -it sync ls -la /app/vendor/
+
+# Deve mostrar vlucas/phpdotenv e outras pastas
+docker exec -it sync ls -la /app/vendor/vlucas/
