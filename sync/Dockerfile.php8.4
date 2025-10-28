@@ -1,0 +1,34 @@
+FROM php:8.4-cli
+
+# Dependências do sistema
+RUN apt-get update && apt-get install -y \
+    firebird-dev \
+    default-libmysqlclient-dev \
+    git \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalador de extensões
+COPY --from=ghcr.io/mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+
+# Instala PDOs
+RUN install-php-extensions \
+    pdo_firebird \
+    pdo_mysql
+
+# Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+# Copia TUDO primeiro
+COPY . .
+
+# Instala dependências
+RUN composer install --no-interaction --optimize-autoloader
+
+# Cria log
+RUN touch /app/sincronizacao.log && chmod 666 /app/sincronizacao.log
+
+CMD ["tail", "-f", "/dev/null"]
+

@@ -1,0 +1,15 @@
+{
+    "name": "omni/syncstock",
+    "description": "OMNI PHPSynC",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "BORBA JR, WALDIR",
+            "email": "wborbajr@gmail.com"
+        }
+    ],
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^4.0"
+    }
+}
