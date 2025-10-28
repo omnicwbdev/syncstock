@@ -1,0 +1,40 @@
+# Dependências do Composer
+/vendor/
+composer.lock
+
+# Arquivos de ambiente
+#.env
+#.env.local
+#.env.production
+#.env.testing
+
+# Logs
+/sincronizacao.log
+*.log
+logs/
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker
+.docker/
+
+# Backup files
+*.backup
+*.bak
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Cache
+.cache/
+*.cache
