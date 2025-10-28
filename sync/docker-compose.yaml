@@ -1,0 +1,12 @@
+services:
+  php-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile.php8.4
+    container_name: sync
+    volumes:
+      - ./:/app
+    environment:
+      - TZ=America/Sao_Paulo
+      - DEBUG_MODE=true
+    working_dir: /app
