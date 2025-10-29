@@ -32,6 +32,7 @@ help: ## Mostra esta ajuda (padrão)
 	@echo "  make clean        → Remove container, volumes e limpa cache"
 	@echo "  make dangling     → Remove imagens dangling (sem tag)"
 	@echo "  make help         → Mostra esta ajuda"
+	@echo "  make doom         → Apocalipse Now"
 	@echo ""
 
 build: ## Build da imagem (latest) (recomendado)
@@ -90,7 +91,7 @@ dangling: ## Remove imagens dangling (sem tag) - <none>:<none>
 	fi
 
 # 🧨 Full Docker Cleanup: remove containers, images, volumes, networks, and prune system
-docker-clean-all:
+doom:
 	@echo "🧩 Stopping all containers..."
 	@docker stop $$(docker ps -aq) 2>/dev/null || true
 	@echo "🗑️ Removing all containers..."
