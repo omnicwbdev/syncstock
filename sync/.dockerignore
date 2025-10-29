@@ -1,0 +1,75 @@
+# Diretórios
+vendor/
+node_modules/
+src/
+
+# Logs
+sincronizacao.log
+*.log
+
+# Arquivos do sistema
+.git/
+.gitignore
+
+# Arquivos do Composer (já instalados no container)
+# composer.json
+# composer.lock
+
+# Docker files (desnecessários no build)
+.dockerignore
+docker-compose.yaml
+Dockerfile.php7.4
+Dockerfile.php8.2
+Dockerfile.php8.4
+
+# Makefile
+Makefile
+
+# Documentação
+README.md
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
+sincronizacao.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build outputs
+/dist
+/build
+out/
+
+# Tests
+tests/
+test/
+
+# Documentation
+docs/
+*.md
+README.md
+
+# Composer cache
+composer/cache/
+composer/lock-files/
+
+# PHP
+.php_cs.cache
+.coverage

@@ -6,10 +6,10 @@
 # =============================================================================
 # CONFIGURAÇÕES
 # =============================================================================
-CONTAINER = sync
-SCRIPT    = src/sync.php
-LOGFILE   = sincronizacao.log
-IMAGE_NAME = syncstock/sync
+CONTAINER =$(strip sync)
+SCRIPT    =$(strip src/sync.php)
+LOGFILE   =$(strip sincronizacao.log)
+IMAGE_NAME =$(strip syncstock/sync)
 
 # =============================================================================
 # COMANDOS PRINCIPAIS
@@ -32,6 +32,7 @@ help: ## Mostra esta ajuda (padrão)
 	@echo "  make clean        → Remove container, volumes e limpa cache"
 	@echo "  make dangling     → Remove imagens dangling (sem tag)"
 	@echo "  make help         → Mostra esta ajuda"
+	@echo "  make doom         → Apocalipse Now"
 	@echo ""
 
 build: ## Build da imagem (latest) (recomendado)
@@ -88,6 +89,23 @@ dangling: ## Remove imagens dangling (sem tag) - <none>:<none>
 	else \
 		echo "Nenhuma imagem dangling encontrada."; \
 	fi
+
+# 🧨 Full Docker Cleanup: remove containers, images, volumes, networks, and prune system
+doom:
+	@echo "🧩 Stopping all containers..."
+	@docker stop $$(docker ps -aq) 2>/dev/null || true
+	@echo "🗑️ Removing all containers..."
+	@docker rm -f $$(docker ps -aq) 2>/dev/null || true
+	@echo "🧱 Removing all images..."
+	@docker rmi -f $$(docker images -aq) 2>/dev/null || true
+	@echo "💾 Removing all volumes..."
+	@docker volume rm $$(docker volume ls -q) 2>/dev/null || true
+	@echo "🌐 Removing all networks..."
+	@docker network rm $$(docker network ls -q | grep -vE '^(bridge|host|none)$$') 2>/dev/null || true
+	@echo "🧹 Running Docker system prune..."
+	@docker system prune -a --volumes -f
+	@echo "✅ Full Docker cleanup complete!"
+
 
 # =============================================================================
 # DICA: Use 'make' sem argumentos para ver a ajuda

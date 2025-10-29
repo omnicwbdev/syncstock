@@ -1,0 +1,72 @@
+# =========================================================
+# 🐘 Dockerfile.prod — Optimized PHP 8.4 Alpine with PDO Firebird + MySQL
+# Multi-stage build for minimal runtime size
+# =========================================================
+
+### --- STAGE 1: BUILDER (installs extensions)
+FROM php:8.4-cli-alpine AS builder
+
+LABEL stage="builder" \
+      maintainer="Waldir Borba Junior <github.com/waldirborbajr>"
+
+# Copia o instalador de extensões PHP (igual ambiente dev)
+COPY --from=ghcr.io/mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+
+# Instala dependências para compilação
+RUN apk add --no-cache \
+        bash \
+        autoconf \
+        make \
+        g++ \
+        firebird-dev \
+        mariadb-connector-c-dev \
+        icu-dev
+
+# Instala extensões PHP com o instalador oficial (melhor prática)
+RUN install-php-extensions \
+        pdo_firebird \
+        pdo_mysql \
+        intl
+
+# =========================================================
+### --- STAGE 2: RUNTIME (final minimal image)
+FROM php:8.4-cli-alpine AS runtime
+
+LABEL maintainer="Waldir Borba Junior <github.com/waldirborbajr>" \
+      description="Lightweight PHP 8.4 Alpine image optimized for DB sync scripts."
+
+# Instala apenas o necessário para execução
+RUN apk add --no-cache \
+        bash \
+        tzdata \
+        firebird-dev \
+        mariadb-connector-c \
+    && rm -rf /var/cache/apk/*
+
+# Copia apenas as extensões PHP já compiladas do builder
+COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
+COPY --from=builder /usr/local/etc/php/conf.d /usr/local/etc/php/conf.d
+
+# Define timezone e diretório de trabalho
+ENV TZ=America/Sao_Paulo
+WORKDIR /app
+
+# Copia apenas o script de sincronização
+COPY sync.php /app/sync.php
+
+# Cria usuário não-root para execução segura
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && chown -R appuser:appgroup /app
+
+USER appuser
+
+# Comando padrão
+CMD ["php", "/app/sync.php"]
+
+# =========================================================
+# 🧠 Build example:
+# docker build -f Dockerfile.prod -t sync-prod .
+#
+# 🚀 Run example:
+# docker run --rm -v $(pwd):/app sync-prod
+# =========================================================

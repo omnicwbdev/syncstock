@@ -43,3 +43,13 @@ docker exec -it sync ls -la /app/vendor/
 
 # Deve mostrar vlucas/phpdotenv e outras pastas
 docker exec -it sync ls -la /app/vendor/vlucas/
+
+# Crontab
+
+```
+*/15 * * * * docker run --rm --env-file /opt/sync/.env -v /opt/sync:/app --name sync-job waldirborbajr/sync-prod >> /var/log/sync.log 2>&1
+
+```
+
+```
+```

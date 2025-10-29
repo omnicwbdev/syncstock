@@ -3,10 +3,10 @@
 composer.lock
 
 # Arquivos de ambiente
-#.env
-#.env.local
-#.env.production
-#.env.testing
+.env
+.env.local
+.env.production
+.env.testing
 
 # Logs
 /sincronizacao.log
