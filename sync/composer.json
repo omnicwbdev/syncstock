@@ -11,5 +11,8 @@
     ],
     "require-dev": {
         "squizlabs/php_codesniffer": "^4.0"
+    },
+    "require": {
+        "vlucas/phpdotenv": "^5.6"
     }
 }
