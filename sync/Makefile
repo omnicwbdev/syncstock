@@ -6,10 +6,10 @@
 # =============================================================================
 # CONFIGURAÇÕES
 # =============================================================================
-CONTAINER = sync
-SCRIPT    = src/sync.php
-LOGFILE   = sincronizacao.log
-IMAGE_NAME = syncstock/sync
+CONTAINER =$(strip sync)
+SCRIPT    =$(strip src/sync.php)
+LOGFILE   =$(strip sincronizacao.log)
+IMAGE_NAME =$(strip syncstock/sync)
 
 # =============================================================================
 # COMANDOS PRINCIPAIS
