@@ -1,3 +1,8 @@
+[![Dependabot Updates](https://github.com/omnicwbdev/syncstock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/dependabot/dependabot-updates)
+[![Docker Image CI](https://github.com/omnicwbdev/syncstock/actions/workflows/docker-ci.yaml/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/docker-ci.yaml)
+[![PHP Composer](https://github.com/omnicwbdev/syncstock/actions/workflows/php.yaml/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/php.yaml)
+
+
 # SyncStock
 
 Repositório com duas partes relacionadas ao processo de sincronização e sua interface web:
