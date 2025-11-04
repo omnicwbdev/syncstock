@@ -6,9 +6,36 @@ services:
     container_name: sync
     volumes:
       - ./:/app
+      - ./docker/php/conf.d:/usr/local/etc/php/conf.d:ro
     env_file:
-      - .env  # Carrega variáveis do .env
+      - .env
     environment:
       - TZ=America/Sao_Paulo
       - DEBUG_MODE=true
+      - PHP_IDE_CONFIG=serverName=SyncStock
     working_dir: /app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "9003:9003" # Xdebug
+    networks:
+      - syncstock-network
+
+  # Servidor web opcional para desenvolvimento
+  nginx:
+    image: nginx:alpine
+    container_name: sync-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/app
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - syncstock
+    networks:
+      - syncstock-network
+
+networks:
+  syncstock-network:
+    driver: bridge
+
