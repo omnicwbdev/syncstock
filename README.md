@@ -1,3 +1,90 @@
+# SyncStock
+
+Ferramenta para sincronizar estoque do Firebird para MySQL, calcular preços e executar rotinas pós-sincronização.
+
+Resumo
+-------
+Sincronização programável com configuração via .env, suporte a execução em container Docker e comandos úteis via Makefile.
+
+Ambiente de desenvolvimento
+---------------------------
+- Container dev: Ubuntu 24.04.2 LTS
+- Ferramentas disponíveis: docker, docker-compose, make, php, composer
+- Para abrir URLs no host a partir do container use: "$BROWSER" <url>
+
+Requisitos
+----------
+- Docker & Docker Compose
+- Make
+- Arquivo `.env` configurado (use `.env.example`)
+
+Arquivos principais
+-------------------
+- src/sync.php — lógica principal (conexões Firebird/MySQL, cálculo de preços)
+- docker-compose.yaml — orquestração de containers
+- Dockerfile.php8.4 / Dockerfile.prod — imagens dev/prod
+- .env.example — variáveis de ambiente
+- Makefile — atalhos de execução
+- composer.json — dependências
+- SECURITY.md — política de segurança
+
+Quickstart (rápido)
+-------------------
+1. Copiar variáveis de ambiente:
+   cp .env.example .env
+   editar .env
+
+2. Build e subir containers:
+   make build
+   make up
+
+3. Rodar sincronização:
+   make run
+   ou
+   docker exec -it sync php src/sync.php
+
+Comandos úteis (Makefile)
+-------------------------
+- make build    — build das imagens
+- make up       — sobe containers em background
+- make run      — executa o script de sincronização
+- make exec     — shell interativo no container
+- make logs     — segue logs do serviço
+- make lint     — verifica estilo (PSR12)
+- make analyse  — PHPStan
+- make test     — PHPUnit
+
+Configuração
+------------
+- Preencher `.env` com credenciais Firebird e MySQL e parâmetros de preço (LUCRO, PARC3X, etc).
+- Verificar extensões PHP necessárias (ex.: PDO Firebird).
+
+Verificação e depuração
+-----------------------
+- Verificar extensão Firebird:
+  docker exec -it sync php -m | grep firebird
+
+- Ver logs:
+  docker-compose logs -f
+
+- Entrar no container:
+  make exec
+
+Dicas de produção
+-----------------
+- Use Dockerfile.prod para imagens otimizadas.
+- Execute com usuário não-root e proteja o `.env`.
+- Rotinas críticas devem ser testadas em ambiente staging.
+
+Contribuição
+-----------
+- Abra PRs e mantenha linter/PHPStan limpos.
+- Reporte vulnerabilidades em SECURITY.md.
+
+Licença
+-------
+Ver `composer.json` para informações da licença.
+
 # 1. Build com PHP 8.2
 docker-compose down -v
 docker-compose build --no-cache
@@ -157,3 +244,4 @@ make build-prod
 # Ou use os atalhos completos
 make dev      # Desenvolvimento completo
 make prod     # Produção completa
+```
