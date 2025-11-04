@@ -1,0 +1,41 @@
+; =============================================================================
+; CONFIGURAÇÕES DE DESENVOLVIMENTO
+; =============================================================================
+
+; Exibição de Erros
+display_errors = On
+display_startup_errors = On
+error_reporting = E_ALL
+log_errors = On
+html_errors = On
+
+; Limites para Desenvolvimento
+memory_limit = 512M
+max_execution_time = 300
+max_input_time = 300
+post_max_size = 100M
+upload_max_filesize = 100M
+max_file_uploads = 20
+
+; Configurações de Output
+output_buffering = 4096
+implicit_flush = On
+
+; OpCache para Desenvolvimento
+opcache.enable = 1
+opcache.enable_cli = 1
+opcache.memory_consumption = 256
+opcache.max_accelerated_files = 20000
+opcache.validate_timestamps = 1
+opcache.revalidate_freq = 0
+opcache.save_comments = 1
+
+; Configurações de Session
+session.gc_maxlifetime = 7200
+
+; Logs
+error_log = /var/log/php_errors.log
+
+; Configurações específicas para desenvolvimento
+assert.active = 1
+zend.assertions = 1

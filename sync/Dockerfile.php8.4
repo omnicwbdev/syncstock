@@ -24,11 +24,11 @@ WORKDIR /app
 # Copia TUDO primeiro
 COPY . .
 
-# Instala dependências
-RUN composer install --no-interaction --optimize-autoloader
+# Instala dependências (com fallback para update se lock estiver desatualizado)
+RUN composer install --no-interaction --optimize-autoloader || \
+    (echo "Lock file desatualizado, atualizando..." && composer update --no-interaction --optimize-autoloader)
 
 # Cria log
 RUN touch /app/sincronizacao.log && chmod 666 /app/sincronizacao.log
 
 CMD ["tail", "-f", "/dev/null"]
-

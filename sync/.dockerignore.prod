@@ -1,0 +1,81 @@
+# =============================================================================
+# DOCKERIGNORE PARA PRODUÇÃO - MÍNIMO E SEGURO
+# =============================================================================
+# Ignora tudo que não é necessário em produção
+
+# Código fonte (será copiado seletivamente no Dockerfile.prod)
+src/
+
+# Dependências (já instaladas no build)
+vendor/
+node_modules/
+
+# Logs (serão criados em runtime)
+*.log
+sincronizacao.log
+
+# Arquivos do sistema
+.git/
+.gitignore
+
+# Docker files
+.dockerignore
+.dockerignore.dev
+.dockerignore.prod
+docker-compose.yaml
+Dockerfile.php7.4
+Dockerfile.php8.2
+Dockerfile.php8.4
+
+# Makefile
+Makefile
+
+# Documentação
+README.md
+*.md
+docs/
+
+# Environment variables
+.env
+.env.*
+.env.example
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+*.iml
+
+# Build outputs
+/dist
+/build
+out/
+
+# Tests
+tests/
+test/
+
+# Composer cache
+composer/cache/
+composer/lock-files/
+
+# PHP
+.php_cs.cache
+.coverage
+
+# Dockerignore de desenvolvimento
+.dockerignore.dev
