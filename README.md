@@ -1,104 +1,159 @@
-[![Dependabot Updates](https://github.com/omnicwbdev/syncstock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/dependabot/dependabot-updates)
-[![Docker Image CI](https://github.com/omnicwbdev/syncstock/actions/workflows/docker-ci.yaml/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/docker-ci.yaml)
-[![PHP Composer](https://github.com/omnicwbdev/syncstock/actions/workflows/php.yaml/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/php.yaml)
+# 1. Build com PHP 8.2
+docker-compose down -v
+docker-compose build --no-cache
 
+# 2. Sobe
+docker-compose up -d
 
-# SyncStock
+# 3. Verifica extensão pdo_firebird
+docker exec -it sync php -m | grep firebird
+# Saída esperada: pdo_firebird
 
-Repositório com duas partes relacionadas ao processo de sincronização e sua interface web:
+# 4. Verifica versão PHP
+docker exec -it sync php -v
+# Saída esperada: PHP 8.2.x (cli)
 
-- `sync/` — Aplicação CLI / serviços Docker para executar os processos de sincronização.
-- `sync-web/` — Interface web em PHP para gerenciar/agendar cron jobs e visualizar agendamentos.
+# 5. Teste rápido de conexão Firebird (ajuste host/db)
+docker exec -it sync php -r "
+try {
+    \$pdo = new PDO('firebird:dbname=127.0.0.1:/path/EMPRESA.FDB;charset=UTF8', 'SYSDBA', 'masterkey');
+    echo 'PDO_FIREBIRD OK no PHP 8.2!' . PHP_EOL;
+    \$stmt = \$pdo->query('SELECT FIRST 1 ID_ESTOQUE FROM TB_ESTOQUE');
+    print_r(\$stmt->fetch());
+} catch (Exception \$e) {
+    echo 'Erro: ' . \$e->getMessage() . PHP_EOL;
+}
+"
 
-## Estrutura do repositório
+# 6. Executa o sync
+docker exec -it sync php sync/sync.php
 
-- `sync/`
-  - `composer.json`, `docker-compose.yaml`
-  - `Dockerfile.php7.4`, `Dockerfile.php8.2`, `Dockerfile.php8.4`
-  - `src/sync.php` (ponto de entrada da aplicação de sincronização)
-- `sync-web/`
-  - `composer.json`, `php.ini`, `sync-wrapper.sh`
-  - `public/index.php` (front controller)
-  - `src/` (classe `GerenciadorCrontab.php`, validadores, etc.)
-  - `templates/` (interfaces de gerenciamento de crontab)
+# 7. Ver log
+docker exec -it sync tail -f sincronizacao.log
 
-> Observação: cada subprojeto (`sync` e `sync-web`) possui seu próprio README com informações específicas (veja `sync/README.md` e `sync-web/README.md`). Este README dá uma visão geral e passos rápidos para começar.
+# 8. Debug composer
+docker exec -it sync composer install -vvv
 
-## Requisitos
+# Extras
+docker exec -it sync composer dump-autoload
+docker exec -it sync php src/sync.php
 
-- Docker & Docker Compose (recomendado para ambiente consistente)
-- PHP (para executar `sync-web` localmente sem Docker, opcional)
-- Composer (para instalar dependências PHP quando necessário)
+# Verificar se as dependências foram instaladas
+docker exec -it sync ls -la /app/vendor/
 
-## Início rápido (Docker)
+# Deve mostrar vlucas/phpdotenv e outras pastas
+docker exec -it sync ls -la /app/vendor/vlucas/
 
-A maneira mais simples de levantar os serviços de sincronização é usando o `docker-compose` que está dentro da pasta `sync/`.
+# Crontab
 
-1. Abra um terminal na raiz do repositório e entre em `sync/`:
-
-```bash
-cd sync
+```
+*/15 * * * * docker run --rm --env-file /opt/sync/.env -v /opt/sync:/app --name sync-job waldirborbajr/sync-prod >> /var/log/sync.log 2>&1
+```
 ```
 
-2. Suba os containers (build se necessário):
 
-```bash
-docker-compose up -d --build
+# Comandos de Qualidade de Código:
+
+```sh
+    make lint - Analisa código com PHP Code Sniffer (PSR12)
+
+    make lint-fix - Corrige automaticamente problemas de estilo
+
+    make analyse - Análise estática com PHPStan (nível 8)
 ```
 
-Isso irá construir/rodar os serviços definidos em `sync/docker-compose.yaml` utilizando os Dockerfiles disponíveis.
+# Comandos de Desenvolvimento:
 
-## Executando a interface web localmente (rápido, sem Docker)
+```sh
+    make debug - Executa script com Xdebug habilitado
 
-Se preferir testar rapidamente a interface web sem usar Docker, você pode usar o servidor embutido do PHP apontando para a pasta `sync-web/public`:
+    make test - Executa testes unitários
 
-```bash
-cd sync-web
-# iniciar o servidor embutido (usa PHP instalado localmente)
-php -S localhost:8000 -t public
+    make shell - Alias para make exec
 ```
 
-Depois, abra `http://localhost:8000` no seu navegador.
+# Comandos de Infraestrutura:
 
-## Uso resumo
+```sh
+    make nginx - Inicia servidor web para desenvolvimento
 
-- A parte `sync/` contém a lógica de sincronização e está preparada para rodar em containers com PHP em diferentes versões (veja `Dockerfile.php*`).
-- A parte `sync-web/` provê páginas para criar/editar agendamentos (crontab), validadores e wrappers auxiliares (`sync-wrapper.sh`).
+    make nginx-stop - Para o servidor web
 
-Para ações específicas (ex.: configurar credenciais, parâmetros de sincronização ou agendamento de jobs), consulte os READMEs e arquivos de configuração dentro de cada subpasta.
+    make composer-install - Instala dependências
 
-## Desenvolvimento
+    make composer-update - Atualiza dependências
 
-- Instale dependências PHP quando necessário:
-
-```bash
-# exemplo genérico, rode dentro das pastas que contêm composer.json
-cd sync-web
-composer install
+    make dev-deps - Instala dependências de desenvolvimento
 ```
 
-- Para debugar ou desenvolver, use o servidor embutido do PHP ou rode containers com imagens que exponham Xdebug (se configurado).
+Uso Prático:
+bash
 
-## Testes
+# Fluxo típico de desenvolvimento
+make build
+make up
+make lint          # Verificar qualidade do código
+make analyse       # Análise estática
+make debug         # Executar com Xdebug
 
-Este repositório não contém uma suíte de testes automatizados evidente no nível raiz. Se você adicionar testes, prefira PHPUnit para partes PHP e documente os comandos aqui.
+# Ou para desenvolvimento web
+make nginx         # Servidor web em localhost:8080
 
-## Contribuição
+# Instalar ferramentas de desenvolvimento
+make dev-deps      # Instala PHPStan, PHPUnit, etc.
 
-1. Fork do repositório
-2. Crie uma branch com a sua feature/bugfix
-3. Abra um Pull Request descrevendo a mudança
 
-Siga as convenções de código presentes no projeto e adicione testes quando alterar lógica crítica.
+# Recriar o container com as novas configurações
 
-## Licença
+make stop
+make build
+make up
 
-Adicione aqui a licença do projeto (se aplicável). Se não houver uma licença no repositório, considere adicionar um arquivo `LICENSE`.
+# Verificar se as configurações foram carregadas
+make exec
 
-## Contato
+# Dentro do container:
+php -i | grep display_errors
+php -i | grep xdebug.mode
 
-Para dúvidas sobre o projeto, abra uma issue neste repositório ou contate os mantenedores listados no arquivo `composer.json` de cada subprojeto.
+# Testar Xdebug
+make debug
 
----
 
-README gerado automaticamente em Português. Se quiser que eu inclua seções adicionais (ex.: exemplos de configuração, variáveis de ambiente, passos do `Makefile`, ou conteúdo extra das pastas `sync/` e `sync-web/`), diga o que quer que eu detalhe e eu atualizo o arquivo.
+# Desenvolvimento (padrão)
+make dockerignore-dev
+make build-dev
+make up
+
+# Produção
+make dockerignore-prod  
+make build-prod
+
+# Ou use os atalhos
+make build-dev    # Desenvolvimento completo
+make build-prod   # Produção completa
+
+# Verificar configuração atual
+make dockerignore-show
+
+
+
+--------
+
+# Configurar para desenvolvimento
+make dockerignore-dev
+make dockerignore-show
+
+# Configurar para produção  
+make dockerignore-prod
+make dockerignore-show
+
+# Build de desenvolvimento
+make build-dev
+
+# Build de produção
+make build-prod
+
+# Ou use os atalhos completos
+make dev      # Desenvolvimento completo
+make prod     # Produção completa

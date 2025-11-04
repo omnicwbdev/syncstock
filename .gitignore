@@ -1,1 +1,50 @@
-sync/vendor
+# Dependências do Composer
+/vendor/
+composer.lock
+node_modules/
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.production
+.env.testing
+
+# Logs do PHP
+/var/log/php_errors.log
+/tmp/xdebug.log
+
+# Logs
+/sincronizacao.log
+*.log
+logs/
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Backup files
+*.backup
+*.bak
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Cache
+.cache/
+*.cache
+
+sincronizacao.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+/tests/
+
