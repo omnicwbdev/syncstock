@@ -1,316 +1,219 @@
+# =============================================================================
 # Makefile para SyncStock (PHP 8.4 + Firebird + MySQL)
-# Comandos para build, execução, debug e controle do container
+# =============================================================================
 
 .PHONY: build build-fast build-nc up start run exec logs stop restart clean help dangling \
         lint lint-fix analyse test debug shell nginx nginx-stop \
         composer-install composer-update dev-deps \
         dockerignore-dev dockerignore-prod dockerignore-show \
-        build-dev build-prod build-nc-dev build-nc-prod doom
+        build-dev build-prod build-nc-dev build-nc-prod doom \
+        nuke nuke-safe nuke-images nuke-containers nuke-volumes
 
 # =============================================================================
 # CONFIGURAÇÕES
 # =============================================================================
-CONTAINER =$(strip sync)
-SCRIPT    =$(strip src/sync.php)
-LOGFILE   =$(strip sincronizacao.log)
-IMAGE_NAME =$(strip syncstock/sync)
-SRC_DIR   =$(strip src/)
-DOCKERIGNORE_DEV = .dockerignore.dev
-DOCKERIGNORE_PROD = .dockerignore.prod
+CONTAINER        := $(strip sync)
+SCRIPT           := $(strip src/sync.php)
+LOGFILE          := $(strip sincronizacao.log)
+IMAGE_NAME       := $(strip syncstock/sync)
+SRC_DIR          := $(strip src/)
+DOCKERIGNORE_DEV := .dockerignore.dev
+DOCKERIGNORE_PROD := .dockerignore.prod
 
 # =============================================================================
-# COMANDOS PRINCIPAIS
+# AJUDA
 # =============================================================================
+.DEFAULT_GOAL := help
 
-help: ## Mostra esta ajuda (padrão)
+help:
 	@echo "Makefile para SyncStock"
 	@echo ""
 	@echo "COMANDOS PRINCIPAIS:"
 	@echo "  make build           → Build da imagem (latest)"
-	@echo "  make build-fast      → Build rápido usando cache"
-	@echo "  make build-nc        → Rebuild completo (com --no-cache)"
-	@echo "  make up              → Sobe o container em background (-d)"
-	@echo "  make start           → Sobe o container em foreground (sem -d)"
+	@echo "  make build-nc        → Build sem cache"
+	@echo "  make up/start        → Sobe o container (-d ou foreground)"
 	@echo "  make run             → Executa o script de sincronização"
-	@echo "  make exec            → Entra no container (bash)"
-	@echo "  make logs            → Segue o log em tempo real"
-	@echo "  make stop            → Para o container removendo orphans"
-	@echo "  make restart         → Para + Build + Sobe + Executa"
-	@echo "  make clean           → Remove container, volumes e limpa cache"
-	@echo "  make dangling        → Remove imagens dangling (sem tag)"
+	@echo "  make exec/shell      → Entra no container"
+	@echo "  make logs            → Mostra logs em tempo real"
+	@echo "  make stop/restart    → Para e reinicia containers"
+	@echo "  make clean/dangling  → Limpeza leve de containers e imagens"
 	@echo ""
 	@echo "COMANDOS DE DESENVOLVIMENTO:"
-	@echo "  make dev             → Setup completo de desenvolvimento"
-	@echo "  make lint            → Analisa código com PHP Code Sniffer"
-	@echo "  make lint-fix        → Corrige automaticamente problemas de estilo"
-	@echo "  make analyse         → Análise estática com PHPStan"
-	@echo "  make test            → Executa testes unitários"
-	@echo "  make debug           → Executa script com Xdebug habilitado"
-	@echo "  make shell           → Entra no container (bash interativo)"
-	@echo "  make nginx           → Inicia servidor web Nginx"
-	@echo "  make nginx-stop      → Para servidor web Nginx"
-	@echo "  make composer-install → Instala dependências do Composer"
-	@echo "  make composer-update → Atualiza dependências do Composer"
-	@echo "  make dev-deps        → Instala dependências de desenvolvimento"
+	@echo "  make lint/lint-fix   → Code Sniffer (análise e correção)"
+	@echo "  make analyse/test    → PHPStan e PHPUnit"
+	@echo "  make debug           → Execução com Xdebug"
+	@echo "  make composer-*      → Gerência de dependências"
 	@echo ""
-	@echo "DOCKERIGNORE:"
-	@echo "  make dockerignore-dev  → Configura .dockerignore para desenvolvimento"
-	@echo "  make dockerignore-prod → Configura .dockerignore para produção"
-	@echo "  make dockerignore-show → Mostra configuração atual"
-	@echo "  make build-dev         → Build para DESENVOLVIMENTO"
-	@echo "  make build-prod        → Build para PRODUÇÃO"
-	@echo "  make build-nc-dev      → Rebuild para desenvolvimento (no cache)"
-	@echo "  make build-nc-prod     → Rebuild para produção (no cache)"
-	@echo ""
-	@echo "PRODUÇÃO:"
-	@echo "  make prod             → Build + Run em modo produção"
-	@echo "  make prod-build       → Apenas build da imagem de produção"
-	@echo "  make prod-run         → Executa container de produção"
-	@echo "  make prod-secure      → Executa com todas as seguranças"
-	@echo "  make prod-shell       → Shell no container de produção"
-	@echo "  make prod-logs        → Logs do container de produção"
-	@echo "  make prod-clean       → Limpa imagens de produção"
+	@echo "DOCKERIGNORE / BUILD:"
+	@echo "  make dockerignore-dev|prod → Alterna .dockerignore"
+	@echo "  make build-dev|prod        → Build de ambiente"
+	@echo "  make build-nc-dev|prod     → Build sem cache"
 	@echo ""
 	@echo "LIMPEZA AVANÇADA:"
-	@echo "  make nuke             → 💣 Remove TUDO (containers, imagens, volumes)"
-	@echo "  make nuke-safe        → 🧹 Limpeza segura (mantém imagens oficiais)"
-	@echo "  make nuke-images      → 🖼️  Remove apenas imagens"
-	@echo "  make nuke-containers  → 🗑️  Remove apenas containers"
-	@echo "  make nuke-volumes     → 💾 Remove apenas volumes"
-	@echo ""
-	@echo "UTILITÁRIOS:"
-	@echo "  make help             → Mostra esta ajuda"
-	@echo "  make doom             → Apocalipse Now (limpeza total do Docker)"
+	@echo "  make nuke*, doom → Limpezas completas e destrutivas"
 	@echo ""
 
 # =============================================================================
-# COMANDOS DE LIMPEZA AVANÇADA
+# BUILD / EXECUÇÃO
 # =============================================================================
 
-nuke: ## 💣 Remove TODOS os containers, imagens e volumes (CUIDADO!)
-	@echo "💣 INICIANDO NUKE - REMOVENDO TUDO DO DOCKER!"
-	@echo "⚠️  ISSO REMOVERÁ:"
-	@echo "   - Todos os containers (rodando e parados)"
-	@echo "   - Todas as imagens"
-	@echo "   - Todos os volumes"
-	@echo "   - Todas as networks não padrão"
-	@read -p "❓ Tem certeza ABSOLUTA? (digite 'NUKE' para confirmar): " confirm && [ $$confirm = "NUKE" ] || exit 1
-	@echo "🧨 Executando NUKE..."
-	@echo "🛑 Parando todos os containers..."
-	@docker stop $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para parar"
-	@echo "🗑️  Removendo todos os containers..."
-	@docker rm $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para remover"
-	@echo "🖼️  Removendo todas as imagens..."
-	@docker rmi $$(docker images -q) -f 2>/dev/null || echo "Nenhuma imagem para remover"
-	@echo "💾 Removendo todos os volumes..."
-	@docker volume rm $$(docker volume ls -q) 2>/dev/null || echo "Nenhum volume para remover"
-	@echo "🌐 Removendo networks não utilizadas..."
-	@docker network prune -f
-	@echo "✅ NUKE completo! Sistema Docker limpo."
-
-nuke-safe: ## 🧹 Limpeza segura - mantém imagens oficiais e networks padrão
-	@echo "🧹 Limpeza segura do Docker..."
-	@echo "🛑 Parando todos os containers..."
-	@docker stop $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para parar"
-	@echo "🗑️  Removendo todos os containers..."
-	@docker rm $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para remover"
-	@echo "💾 Removendo volumes não utilizados..."
-	@docker volume prune -f
-	@echo "🌐 Removendo networks não utilizadas..."
-	@docker network prune -f
-	@echo "📦 Removendo imagens dangling..."
-	@docker image prune -f
-	@echo "✅ Limpeza segura completa!"
-
-nuke-images: ## 🖼️ Remove apenas todas as imagens (preserva containers e volumes)
-	@echo "🖼️ Removendo TODAS as imagens Docker..."
-	@read -p "❓ Tem certeza? (s/N): " confirm && [ $$confirm = "s" ] || exit 1
-	@docker rmi $$(docker images -q) -f 2>/dev/null || echo "Algumas imagens não puderam ser removidas"
-	@echo "✅ Todas as imagens removidas!"
-
-nuke-containers: ## 🗑️ Remove apenas todos os containers (preserva imagens e volumes)
-	@echo "🗑️ Removendo TODOS os containers..."
-	@docker stop $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para parar"
-	@docker rm $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para remover"
-	@echo "✅ Todos os containers removidos!"
-
-nuke-volumes: ## 💾 Remove apenas todos os volumes (preserva containers e imagens)
-	@echo "💾 Removendo TODOS os volumes..."
-	@read -p "❓ Isso apagará todos os dados persistentes. Tem certeza? (s/N): " confirm && [ $$confirm = "s" ] || exit 1
-	@docker volume rm $$(docker volume ls -q) 2>/dev/null || echo "Alguns volumes não puderam ser removidos (em uso)"
-	@echo "✅ Todos os volumes removidos!"
-
-build: ## Build da imagem (latest) (recomendado)
-	@echo "Building $(IMAGE_NAME):latest..."
+build: ## Build padrão (usa cache)
+	@echo "🚧 Building $(IMAGE_NAME):latest..."
 	@docker compose build
 
-build-fast: ## Build rápido usando cache (sem versão)
-	@echo "Building $(IMAGE_NAME):latest (using cache)..."
-	@docker compose build
+build-fast: build ## Build rápido (mantido para compatibilidade)
+	@true
 
-build-nc: ## Rebuild completo com --no-cache
-	@echo "Building $(IMAGE_NAME):latest (NO CACHE)..."
+build-nc: ## Build completo sem cache
+	@echo "🧱 Rebuilding $(IMAGE_NAME):latest (no cache)..."
 	@docker compose build --no-cache
-	@echo "Build completo!"
+	@echo "✅ Build completo!"
 
-up: ## Sobe o container em background (-d)
-	@echo "Starting container in background..."
+up: ## Sobe container em background
+	@echo "🚀 Subindo container em background..."
 	@docker compose up -d
 
-start: ## Sobe o container em foreground (sem -d)
-	@echo "Starting container in foreground..."
+start: ## Sobe container em foreground
+	@echo "🚀 Subindo container em foreground..."
 	@docker compose up
 
-run: ## Executa o script de sincronização
-	@echo "Executing $(SCRIPT)..."
+run: ## Executa script principal
+	@echo "▶️ Executando $(SCRIPT)..."
 	@docker exec -it $(CONTAINER) php $(SCRIPT)
 
-exec: ## Entra no container (bash interativo)
-	@echo "Entering container $(CONTAINER)..."
+exec shell: ## Entra no container
+	@echo "💻 Entrando no container $(CONTAINER)..."
 	@docker exec -it $(CONTAINER) bash
 
-logs: ## Segue o log da sincronização
-	@echo "Following $(LOGFILE)..."
+logs: ## Mostra logs
+	@echo "📜 Logs: $(LOGFILE)"
 	@docker exec -it $(CONTAINER) tail -f $(LOGFILE)
 
-stop: ## Para o container removendo containers órfãos
-	@echo "Stopping containers and removing orphans..."
+stop: ## Para containers e remove órfãos
+	@echo "🛑 Parando containers..."
 	@docker compose down --remove-orphans
 
-restart: stop build up run ## Para + Build + Sobe + Executa
-	@echo "Restart sequence completed!"
+restart: stop build up run ## Reinicia todo ciclo
+	@echo "🔁 Restart completo!"
 
-clean: ## Remove container, volumes e limpa imagens
-	@echo "Cleaning up: removing containers, volumes, and pruning system..."
+clean: ## Limpa containers, volumes e cache
+	@echo "🧹 Limpando containers, volumes e cache..."
 	@docker compose down -v --remove-orphans
 	@docker system prune -f
 
-dangling: ## Remove imagens dangling (sem tag) - <none>:<none>
-	@echo "Removendo imagens dangling..."
-	@DANGLING_IMAGES=$$(docker images -f "dangling=true" -q); \
-	if [ -n "$$DANGLING_IMAGES" ]; then \
-		echo "Removendo imagens: $$DANGLING_IMAGES"; \
-		docker rmi $$DANGLING_IMAGES 2>/dev/null || echo "Algumas imagens não puderam ser removidas (em uso)"; \
-	else \
-		echo "Nenhuma imagem dangling encontrada."; \
-	fi
+dangling: ## Remove imagens <none>:<none>
+	@echo "🧽 Removendo imagens dangling..."
+	@DANGLING=$$(docker images -f "dangling=true" -q); \
+	[ -n "$$DANGLING" ] && docker rmi $$DANGLING -f || echo "Nenhuma imagem dangling encontrada."
 
 # =============================================================================
-# COMANDOS DE DESENVOLVIMENTO
+# DESENVOLVIMENTO
 # =============================================================================
 
-lint: ## Analisa código com PHP Code Sniffer (PSR12)
-	@echo "Analisando código com PHP Code Sniffer..."
+lint:
 	@docker exec -it $(CONTAINER) phpcs --standard=PSR12 $(SRC_DIR)
 
-lint-fix: ## Corrige automaticamente problemas de estilo de código
-	@echo "Corrigindo estilo de código..."
+lint-fix:
 	@docker exec -it $(CONTAINER) phpcbf --standard=PSR12 $(SRC_DIR)
 
-analyse: ## Análise estática com PHPStan (nível 8 - mais rigoroso)
-	@echo "Executando análise estática com PHPStan..."
+analyse:
 	@docker exec -it $(CONTAINER) phpstan analyse $(SRC_DIR) --level=8
 
-test: ## Executa testes unitários
-	@echo "Executando testes unitários..."
+test:
 	@docker exec -it $(CONTAINER) ./vendor/bin/phpunit
 
-debug: ## Executa script com Xdebug habilitado
-	@echo "Executando $(SCRIPT) com Xdebug..."
+debug:
 	@docker exec -it $(CONTAINER) php -d xdebug.mode=debug $(SCRIPT)
 
-shell: ## Entra no container (bash interativo) - alias para exec
-	@echo "Abrindo shell no container..."
-	@docker exec -it $(CONTAINER) bash
-
-nginx: ## Inicia servidor web Nginx para desenvolvimento
-	@echo "Iniciando servidor web Nginx..."
+nginx:
 	@docker compose -f docker-compose.yml up -d nginx
-	@echo "Nginx rodando em http://localhost:8080"
+	@echo "🌐 Nginx disponível em http://localhost:8080"
 
-nginx-stop: ## Para servidor web Nginx
-	@echo "Parando servidor web Nginx..."
+nginx-stop:
 	@docker compose -f docker-compose.yml stop nginx
 
-composer-install: ## Instala dependências do Composer
-	@echo "Instalando dependências do Composer..."
+composer-install:
 	@docker exec -it $(CONTAINER) composer install --no-interaction --optimize-autoloader
 
-composer-update: ## Atualiza dependências do Composer
-	@echo "Atualizando dependências do Composer..."
+composer-update:
 	@docker exec -it $(CONTAINER) composer update --no-interaction --optimize-autoloader
 
-dev-deps: ## Instala dependências de desenvolvimento
-	@echo "Instalando dependências de desenvolvimento..."
+dev-deps:
 	@docker exec -it $(CONTAINER) composer require --dev \
-		squizlabs/php_codesniffer \
-		phpstan/phpstan \
-		friendsofphp/php-cs-fixer \
-		phpunit/phpunit
+		squizlabs/php_codesniffer phpstan/phpstan friendsofphp/php-cs-fixer phpunit/phpunit
 	@echo "✅ Dependências de desenvolvimento instaladas!"
 
 # =============================================================================
-# COMANDOS DOCKERIGNORE
+# DOCKERIGNORE / BUILDS
 # =============================================================================
 
-dockerignore-dev: ## Usa .dockerignore para desenvolvimento
-	@echo "Configurando para DESENVOLVIMENTO..."
-	@cp $(DOCKERIGNORE_DEV) .dockerignore
-	@echo "✅ .dockerignore configurado para desenvolvimento"
+dockerignore-dev:
+	@cp $(DOCKERIGNORE_DEV) .dockerignore && echo "✅ .dockerignore configurado para DEV"
 
-dockerignore-prod: ## Usa .dockerignore para produção
-	@echo "Configurando para PRODUÇÃO..."
-	@cp $(DOCKERIGNORE_PROD) .dockerignore
-	@echo "✅ .dockerignore configurado para produção"
+dockerignore-prod:
+	@cp $(DOCKERIGNORE_PROD) .dockerignore && echo "✅ .dockerignore configurado para PROD"
 
-dockerignore-show: ## Mostra qual configuração está ativa
+dockerignore-show:
 	@if [ -f .dockerignore ]; then \
-		echo "Configuração atual do .dockerignore:"; \
-		echo "====================================="; \
-		head -n 5 .dockerignore; \
-	else \
-		echo "❌ .dockerignore não encontrado"; \
-	fi
+		echo "🧾 .dockerignore atual:"; head -n 5 .dockerignore; \
+	else echo "❌ .dockerignore não encontrado"; fi
+
+build-dev: dockerignore-dev build
+	@echo "✅ Build DEV completo"
+
+build-prod: dockerignore-prod build
+	@echo "✅ Build PROD completo"
+
+build-nc-dev: dockerignore-dev build-nc
+	@echo "✅ Build DEV (no cache) completo"
+
+build-nc-prod: dockerignore-prod build-nc
+	@echo "✅ Build PROD (no cache) completo"
 
 # =============================================================================
-# COMANDOS DE BUILD ESPECÍFICOS
+# LIMPEZA AVANÇADA
 # =============================================================================
 
-build-dev: dockerignore-dev build ## Build para desenvolvimento
-	@echo "✅ Build de desenvolvimento completo"
-
-build-prod: dockerignore-prod build ## Build para produção
-	@echo "✅ Build de produção completo"
-
-build-nc-dev: dockerignore-dev build-nc ## Rebuild completo para desenvolvimento
-	@echo "✅ Rebuild de desenvolvimento completo (no cache)"
-
-build-nc-prod: dockerignore-prod build-nc ## Rebuild completo para produção  
-	@echo "✅ Rebuild de produção completo (no cache)"
-
-# =============================================================================
-# COMANDOS DE EMERGÊNCIA
-# =============================================================================
-
-# 🧨 Full Docker Cleanup: remove containers, images, volumes, networks, and prune system
-doom:
-	@echo "🧨 INICIANDO APOCALIPSE NOW..."
-	@echo "🧩 Stopping all containers..."
+nuke:
+	@echo "💣 REMOVENDO TUDO (containers, imagens, volumes)..."
+	@read -p "Digite 'NUKE' para confirmar: " c && [ "$$c" = "NUKE" ] || exit 1
 	@docker stop $$(docker ps -aq) 2>/dev/null || true
-	@echo "🗑️ Removing all containers..."
-	@docker rm -f $$(docker ps -aq) 2>/dev/null || true
-	@echo "🧱 Removing all images..."
-	@docker rmi -f $$(docker images -aq) 2>/dev/null || true
-	@echo "💾 Removing all volumes..."
+	@docker rm $$(docker ps -aq) 2>/dev/null || true
+	@docker rmi $$(docker images -q) -f 2>/dev/null || true
 	@docker volume rm $$(docker volume ls -q) 2>/dev/null || true
-	@echo "🌐 Removing all networks..."
-	@docker network rm $$(docker network ls -q | grep -vE '^(bridge|host|none)$$') 2>/dev/null || true
-	@echo "🧹 Running Docker system prune..."
-	@docker system prune -a --volumes -f
-	@echo "✅ Full Docker cleanup complete!"
-	@echo "🎉 Sistema limpo! Agora você pode recomeçar."
+	@docker network prune -f
+	@echo "✅ Docker limpo."
 
-# =============================================================================
-# DICA: Use 'make' sem argumentos para ver a ajuda
-# =============================================================================
-.DEFAULT_GOAL := help
+nuke-safe:
+	@docker stop $$(docker ps -aq) 2>/dev/null || true
+	@docker rm $$(docker ps -aq) 2>/dev/null || true
+	@docker volume prune -f
+	@docker network prune -f
+	@docker image prune -f
+	@echo "✅ Limpeza segura completa."
+
+nuke-images:
+	@read -p "Remover todas as imagens? (s/N): " c && [ "$$c" = "s" ] || exit 1
+	@docker rmi $$(docker images -q) -f 2>/dev/null || true
+	@echo "✅ Todas as imagens removidas."
+
+nuke-containers:
+	@docker stop $$(docker ps -aq) 2>/dev/null || true
+	@docker rm $$(docker ps -aq) 2>/dev/null || true
+	@echo "✅ Containers removidos."
+
+nuke-volumes:
+	@read -p "Apagar todos os volumes? (s/N): " c && [ "$$c" = "s" ] || exit 1
+	@docker volume rm $$(docker volume ls -q) 2>/dev/null || true
+	@echo "✅ Volumes removidos."
+
+doom:
+	@echo "🧨 APOCALIPSE NOW..."
+	@docker stop $$(docker ps -aq) 2>/dev/null || true
+	@docker rm -f $$(docker ps -aq) 2>/dev/null || true
+	@docker rmi -f $$(docker images -aq) 2>/dev/null || true
+	@docker volume rm $$(docker volume ls -q) 2>/dev/null || true
+	@docker network rm $$(docker network ls -q | grep -vE '^(bridge|host|none)$$') 2>/dev/null || true
+	@docker system prune -a --volumes -f
+	@echo "🎉 Sistema Docker limpo e resetado!"
+
