@@ -40,6 +40,7 @@ help: ## Mostra esta ajuda (padrão)
 	@echo "  make dangling        → Remove imagens dangling (sem tag)"
 	@echo ""
 	@echo "COMANDOS DE DESENVOLVIMENTO:"
+	@echo "  make dev             → Setup completo de desenvolvimento"
 	@echo "  make lint            → Analisa código com PHP Code Sniffer"
 	@echo "  make lint-fix        → Corrige automaticamente problemas de estilo"
 	@echo "  make analyse         → Análise estática com PHPStan"
@@ -61,10 +62,83 @@ help: ## Mostra esta ajuda (padrão)
 	@echo "  make build-nc-dev      → Rebuild para desenvolvimento (no cache)"
 	@echo "  make build-nc-prod     → Rebuild para produção (no cache)"
 	@echo ""
+	@echo "PRODUÇÃO:"
+	@echo "  make prod             → Build + Run em modo produção"
+	@echo "  make prod-build       → Apenas build da imagem de produção"
+	@echo "  make prod-run         → Executa container de produção"
+	@echo "  make prod-secure      → Executa com todas as seguranças"
+	@echo "  make prod-shell       → Shell no container de produção"
+	@echo "  make prod-logs        → Logs do container de produção"
+	@echo "  make prod-clean       → Limpa imagens de produção"
+	@echo ""
+	@echo "LIMPEZA AVANÇADA:"
+	@echo "  make nuke             → 💣 Remove TUDO (containers, imagens, volumes)"
+	@echo "  make nuke-safe        → 🧹 Limpeza segura (mantém imagens oficiais)"
+	@echo "  make nuke-images      → 🖼️  Remove apenas imagens"
+	@echo "  make nuke-containers  → 🗑️  Remove apenas containers"
+	@echo "  make nuke-volumes     → 💾 Remove apenas volumes"
+	@echo ""
 	@echo "UTILITÁRIOS:"
 	@echo "  make help             → Mostra esta ajuda"
 	@echo "  make doom             → Apocalipse Now (limpeza total do Docker)"
 	@echo ""
+
+# =============================================================================
+# COMANDOS DE LIMPEZA AVANÇADA
+# =============================================================================
+
+nuke: ## 💣 Remove TODOS os containers, imagens e volumes (CUIDADO!)
+	@echo "💣 INICIANDO NUKE - REMOVENDO TUDO DO DOCKER!"
+	@echo "⚠️  ISSO REMOVERÁ:"
+	@echo "   - Todos os containers (rodando e parados)"
+	@echo "   - Todas as imagens"
+	@echo "   - Todos os volumes"
+	@echo "   - Todas as networks não padrão"
+	@read -p "❓ Tem certeza ABSOLUTA? (digite 'NUKE' para confirmar): " confirm && [ $$confirm = "NUKE" ] || exit 1
+	@echo "🧨 Executando NUKE..."
+	@echo "🛑 Parando todos os containers..."
+	@docker stop $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para parar"
+	@echo "🗑️  Removendo todos os containers..."
+	@docker rm $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para remover"
+	@echo "🖼️  Removendo todas as imagens..."
+	@docker rmi $$(docker images -q) -f 2>/dev/null || echo "Nenhuma imagem para remover"
+	@echo "💾 Removendo todos os volumes..."
+	@docker volume rm $$(docker volume ls -q) 2>/dev/null || echo "Nenhum volume para remover"
+	@echo "🌐 Removendo networks não utilizadas..."
+	@docker network prune -f
+	@echo "✅ NUKE completo! Sistema Docker limpo."
+
+nuke-safe: ## 🧹 Limpeza segura - mantém imagens oficiais e networks padrão
+	@echo "🧹 Limpeza segura do Docker..."
+	@echo "🛑 Parando todos os containers..."
+	@docker stop $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para parar"
+	@echo "🗑️  Removendo todos os containers..."
+	@docker rm $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para remover"
+	@echo "💾 Removendo volumes não utilizados..."
+	@docker volume prune -f
+	@echo "🌐 Removendo networks não utilizadas..."
+	@docker network prune -f
+	@echo "📦 Removendo imagens dangling..."
+	@docker image prune -f
+	@echo "✅ Limpeza segura completa!"
+
+nuke-images: ## 🖼️ Remove apenas todas as imagens (preserva containers e volumes)
+	@echo "🖼️ Removendo TODAS as imagens Docker..."
+	@read -p "❓ Tem certeza? (s/N): " confirm && [ $$confirm = "s" ] || exit 1
+	@docker rmi $$(docker images -q) -f 2>/dev/null || echo "Algumas imagens não puderam ser removidas"
+	@echo "✅ Todas as imagens removidas!"
+
+nuke-containers: ## 🗑️ Remove apenas todos os containers (preserva imagens e volumes)
+	@echo "🗑️ Removendo TODOS os containers..."
+	@docker stop $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para parar"
+	@docker rm $$(docker ps -aq) 2>/dev/null || echo "Nenhum container para remover"
+	@echo "✅ Todos os containers removidos!"
+
+nuke-volumes: ## 💾 Remove apenas todos os volumes (preserva containers e imagens)
+	@echo "💾 Removendo TODOS os volumes..."
+	@read -p "❓ Isso apagará todos os dados persistentes. Tem certeza? (s/N): " confirm && [ $$confirm = "s" ] || exit 1
+	@docker volume rm $$(docker volume ls -q) 2>/dev/null || echo "Alguns volumes não puderam ser removidos (em uso)"
+	@echo "✅ Todos os volumes removidos!"
 
 build: ## Build da imagem (latest) (recomendado)
 	@echo "Building $(IMAGE_NAME):latest..."
