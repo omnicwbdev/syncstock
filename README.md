@@ -1,3 +1,11 @@
+[![.github/workflows/docker-ci.yaml](https://github.com/omnicwbdev/syncstock/actions/workflows/docker-ci.yaml/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/docker-ci.yaml)
+
+[![CodeQL](https://github.com/omnicwbdev/syncstock/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/github-code-scanning/codeql)
+
+[![Dependabot Updates](https://github.com/omnicwbdev/syncstock/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/dependabot/dependabot-updates)
+
+[![PHP Composer](https://github.com/omnicwbdev/syncstock/actions/workflows/php.yaml/badge.svg)](https://github.com/omnicwbdev/syncstock/actions/workflows/php.yaml)
+
 # SyncStock
 
 Ferramenta para sincronizar estoque do Firebird para MySQL, calcular preços e executar rotinas pós-sincronização.
