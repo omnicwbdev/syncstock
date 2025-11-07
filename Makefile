@@ -1,5 +1,6 @@
 # =============================================================================
 # Makefile para SyncStock (PHP 8.4 + Firebird + MySQL)
+# Authors: BORBA JR, WALDIR; IA (Grok, ChatGPT, DeepSeek) 
 # =============================================================================
 
 .PHONY: build build-fast build-nc up start run exec logs stop restart clean help dangling \
