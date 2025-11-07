@@ -9,6 +9,7 @@ on:
       - dev
     tags:
       - 'v*.*.*'
+  pull_request:
 
 env:
   LATEST_TAG: omnicwbdev/sync:latest
@@ -19,6 +20,25 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Select proper .dockerignore
+        run: |
+          echo "GITHUB_REF: ${GITHUB_REF}"
+          echo "GITHUB_EVENT_NAME: ${GITHUB_EVENT_NAME}"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "Pull Request detected → using development dockerignore"
+            cp .dockerignore.dev .dockerignore
+          elif [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+            echo "Development branch → using .dockerignore.dev"
+            cp .dockerignore.dev .dockerignore
+          else
+            echo "Production branch → using .dockerignore.prod"
+            cp .dockerignore.prod .dockerignore
+          fi
+
+          echo "Active dockerignore:"
+          ls -l .dockerignore*
 
       - name: Extract metadata for Docker
         id: meta
@@ -62,8 +82,6 @@ jobs:
           tags: ${{ env.LATEST_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Optimize build args
           build-args: |
             BUILDKIT_INLINE_CACHE=1
-          # Parallel building
           outputs: type=image,push=true
