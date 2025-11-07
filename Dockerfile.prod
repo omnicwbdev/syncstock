@@ -64,7 +64,7 @@ RUN composer install \
 
 
 ### --- STAGE 3: RUNTIME (slim Debian-based)
-FROM php:8.4-cli-slim AS runtime
+FROM php:8.4-cli AS runtime
 LABEL maintainer="Waldir Borba Junior <github.com/waldirborbajr>" \
       description="Lightweight PHP 8.4 (slim) image with PDO Firebird + MySQL"
 
