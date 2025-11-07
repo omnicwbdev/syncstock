@@ -7,7 +7,7 @@ FROM php:8.4-cli-alpine AS builder
 LABEL stage="builder" \
       maintainer="Waldir Borba Junior <github.com/waldirborbajr>"
 
-# Install compilation dependencies (removed non-existent firebird-dev; added curl for download)
+# Install compilation dependencies (curl for download)
 RUN apk add --no-cache \
         autoconf \
         make \
@@ -18,12 +18,12 @@ RUN apk add --no-cache \
         curl \
     && mkdir -p /usr/local/firebird \
     && cd /usr/local \
-    && curl -L -o firebird.tar.xz https://github.com/FirebirdSQL/firebird/releases/download/R-5_0_3/Firebird-5.0.3.1683-0_Linux_amd64.tar.xz \
-    && tar -xf firebird.tar.xz \
+    && curl -L -o firebird.tar.gz https://github.com/FirebirdSQL/firebird/releases/download/v5.0.3/Firebird-5.0.3.1683-0-linux-x64.tar.gz \
+    && tar -xf firebird.tar.gz \
     && EXTRACT_DIR=$(ls -d Firebird-*) \
     && mv ${EXTRACT_DIR}/lib/* /usr/local/firebird/lib/ \
     && mv ${EXTRACT_DIR}/include/* /usr/local/firebird/include/ \
-    && rm -rf firebird.tar.xz ${EXTRACT_DIR} \
+    && rm -rf firebird.tar.gz ${EXTRACT_DIR} \
     # Symlink for standard paths (pdo_firebird expects /usr/include/firebird/ib_util.h etc.)
     && ln -s /usr/local/firebird/include /usr/include/firebird \
     && ln -s /usr/local/firebird/lib /usr/lib/firebird
@@ -60,7 +60,7 @@ FROM php:8.4-cli-alpine AS runtime
 LABEL maintainer="Waldir Borba Junior <github.com/waldirborbajr>" \
       description="Lightweight PHP 8.4 Alpine image optimized for DB sync scripts."
 
-# Install ONLY essential runtime dependencies (removed non-existent firebird-client)
+# Install ONLY essential runtime dependencies
 RUN apk add --no-cache \
         # Database dependencies
         mariadb-connector-c \
