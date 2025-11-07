@@ -1,6 +1,5 @@
 # Dependências do Composer
 /vendor/
-composer.lock
 node_modules/
 
 # Arquivos de ambiente
